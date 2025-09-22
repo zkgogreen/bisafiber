@@ -21,6 +21,7 @@ func NewCustomer(app *fiber.App, customerService domain.CustomerService) {
 	}
 	app.Get("/customer", ca.Index)
 	app.Post("/customer", ca.Create)
+	app.Put("/customer/:id", ca.Update)
 }
 
 func (ca customerApi) Index(ctx *fiber.Ctx) error {
@@ -49,6 +50,36 @@ func (ca customerApi) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(http.StatusInternalServerError).JSON(dto.CreateResponseError(err.Error()))
 	}
 	return ctx.Status(http.StatusOK).JSON(dto.CreateResponseSuccess(dto.CustomerData{
+		Code: req.Code,
+		Name: req.Name,
+	}))
+}
+
+func (ca customerApi) Update(ctx *fiber.Ctx) error {
+	c, cencel := context.WithTimeout(ctx.Context(), 10*time.Second)
+	defer cencel()
+	var req dto.UpdateCustomerData
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.SendStatus(http.StatusUnavailableForLegalReasons)
+	}
+	fails := util.Validate(req)
+	if len(fails) > 0 {
+		return ctx.Status(http.StatusBadRequest).JSON(dto.CreateResponseErrorData("error", fails))
+	}
+
+	var err error
+	req.ID, err = ctx.ParamsInt("id")
+	if err != nil {
+		return ctx.Status(http.StatusBadRequest).JSON(dto.CreateResponseError("Invalid ID parameter"))
+	}
+
+	err = ca.customerService.Update(c, req)
+	if err != nil {
+		return ctx.Status(http.StatusInternalServerError).JSON(dto.CreateResponseError(err.Error()))
+	}
+
+	return ctx.Status(http.StatusOK).JSON(dto.CreateResponseSuccess(dto.CustomerData{
+		ID:   req.ID,
 		Code: req.Code,
 		Name: req.Name,
 	}))

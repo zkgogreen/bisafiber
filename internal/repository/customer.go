@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/doug-martin/goqu/v9"
+	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
 	"github.com/zkgogreen/bisago/domain"
 )
 
@@ -15,7 +16,7 @@ type customerRepository struct {
 
 func NewCustomer(con *sql.DB) domain.CustomerRepository {
 	return &customerRepository{
-		db: goqu.New("default", con),
+		db: goqu.New("mysql", con),
 	}
 }
 
@@ -26,8 +27,9 @@ func (c *customerRepository) FindAll(ctx context.Context) (result []domain.Custo
 }
 
 func (c *customerRepository) FindById(ctx context.Context, id int) (result *domain.Customer, err error) {
-	dataset := c.db.From("customer").Where(goqu.C("deleted_at").IsNull(), goqu.C("id").Eq(id))
-	_, err = dataset.ScanStructContext(ctx, &result)
+	result = &domain.Customer{}
+	dataset := c.db.From("customer").Select("id", "code", "name").Where(goqu.C("deletedat").IsNull(), goqu.C("id").Eq(id))
+	_, err = dataset.ScanStructContext(ctx, result)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +49,7 @@ func (c *customerRepository) Update(ctx context.Context, customer *domain.Custom
 }
 
 func (c *customerRepository) Delete(ctx context.Context, customer *domain.Customer) error {
-	executor := c.db.Update("customer").Where(goqu.C("id").Eq(customer.ID)).Set(goqu.Record{"deleted_at": sql.NullTime{Valid: true, Time: time.Now()}}).Executor()
+	executor := c.db.Update("customer").Where(goqu.C("id").Eq(customer.ID)).Set(goqu.Record{"deletedat": sql.NullTime{Valid: true, Time: time.Now()}}).Executor()
 	_, err := executor.ExecContext(ctx)
 	return err
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/zkgogreen/bisago/domain"
@@ -42,4 +43,19 @@ func (c customerService) Create(ctx context.Context, req dto.CreateCustomerReque
 		CreatedAt: sql.NullTime{Valid: true, Time: time.Now()},
 	}
 	return c.customerRepository.Save(ctx, &customer)
+}
+
+func (c customerService) Update(ctx context.Context, req dto.UpdateCustomerData) error {
+	customer, err := c.customerRepository.FindById(ctx, req.ID)
+	if err != nil {
+		return err
+	}
+	if customer == nil {
+		return fmt.Errorf("customer not found")
+	}
+
+	customer.Code = req.Code
+	customer.Name = req.Name
+	customer.UpdatedAt = sql.NullTime{Valid: true, Time: time.Now()}
+	return c.customerRepository.Update(ctx, customer)
 }
